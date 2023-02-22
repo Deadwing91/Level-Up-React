@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react"
-import { useNavigate } from 'react-router-dom'
-import { createGame, getGameTypes } from '../../managers/GameManager.js'
+import { useNavigate, useParams } from 'react-router-dom'
+import { getGame, getGameTypes, updateGame } from '../../managers/GameManager.js'
 
 
-export const GameForm = () => {
+export const UpdateGameForm = () => {
     const navigate = useNavigate()
+    const { gameId } = useParams() //useParams() is a hook that allows components to access URL parameters from the current route.
     const [gameTypes, setGameTypes] = useState([])
 
     /*
@@ -13,32 +14,36 @@ export const GameForm = () => {
         provide some default values.
     */
     const [currentGame, setCurrentGame] = useState({
-        skill_level: "",
-        number_of_players: 1,
         name: "",
         designer: "",
         description: "",
-        gametype: 0
+        number_of_players: 0,
+        skill_level: "",
+        gametype: 0 // set new property to store pk integer from gameType object returned from database
     })
 
     useEffect(() => {
-        // TODO: Get the game types, then set the state
         getGameTypes().then(res => setGameTypes(res))
-    }, [])
+            getGame(gameId).then(res => {
+            // get response from server then set value of key gameTypeId to pk int of game_type object
+            setCurrentGame(res) 
+        })
+    }, 
+    [gameId])
 
-    const changeGameState = (event) => {
+    const changeGameState = (Event) => {
         // TODO: Complete the onChange function
-        const copy = { ...currentGame }
-        copy[event.target.name] = event.target.value
+        const copy = {...currentGame}
+        copy[Event.target.name] = Event.target.value
         setCurrentGame(copy)
     }
 
     return (
         <form className="gameForm">
-            <h2 className="gameForm__title">Register New Game</h2>
+            <h2 className="gameForm__title">Update Game</h2>
             <fieldset>
                 <div className="form-group">
-                    <label htmlFor="name">Name: </label>
+                    <label htmlFor="name">Game Name: </label>
                     <input type="text" name="name" required autoFocus className="form-control"
                         value={currentGame.name}
                         onChange={changeGameState}
@@ -83,46 +88,50 @@ export const GameForm = () => {
             </fieldset>
             <fieldset>
                 <div className="form-group">
-                <label className="label">Type of Game: </label>
-                <select
-                        name="gametype"
-                        className="form-control"
-                        value={currentGame.gametype}
-                        onChange={(event) => {
-                            const copy = { ...currentGame }
-                            copy.gametype = parseInt(event.target.value)
-                            setCurrentGame(copy)
-                        }}>
-                        <option value="0">Choose Game Type:</option>
-                        {gameTypes.map(gametype => ( 
-                                    <option key={`gametype--${gametype.id}`} value={gametype.id} name={gametype.label}>{gametype.label}</option>                         
-                            ))}
+                <label className="label">Game Type:</label>
+                    <select required autoFocus className="gameTypeList" value={currentGame.gametype} onChange={(evt) => {const copy = {...currentGame}
+                    copy.gametype = parseInt(evt.target.value)
+                    setCurrentGame(copy)}}
+                    >
+                        {gameTypes.map(gametype => (<option
+                                    name={gametype.label}
+                                    className="form-control"
+                                    value={gametype.id}
+                                    key={`gametype--${gametype.id}`}
+                                >{gametype.label}</option>
+                            ))
+                        }
                     </select>
                 </div>
             </fieldset>
-
-            {/* TODO: create the rest of the input fields */}
 
             <button type="submit"
                 onClick={evt => {
                     // Prevent form from being submitted
                     evt.preventDefault()
 
-                    //variable name matches server(django)
                     const game = {
                         name: currentGame.name,
                         designer: currentGame.designer,
                         description: currentGame.description,
                         number_of_players: parseInt(currentGame.number_of_players),
                         skill_level: currentGame.skill_level,
-                        game_type: parseInt(currentGame.gametype)
+                        // gametype: parseInt(currentGame.gametype)
+
+                    }
+
+                    if (currentGame.gametype.id) {
+                        game.gametype = currentGame.gametype.id 
+    
+                    } else {
+                        game.gametype = parseInt(currentGame.gametype)
                     }
 
                     // Send POST request to your API
-                    createGame(game)
+                    updateGame(gameId, game)
                         .then(() => navigate("/games"))
                 }}
-                className="btn btn-primary">Create</button>
+                className="btn btn-primary">Update</button>
         </form>
     )
 }
